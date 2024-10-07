@@ -188,6 +188,17 @@ def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
 
 
 def load_dataset():   
+    if os.path.exists('data/X_train.pkl'):
+        with open('data/X_train.pkl', 'rb') as f:
+            X_train = pickle.load(f)
+        with open('data/X_test.pkl', 'rb') as f:
+            X_test = pickle.load(f)
+        with open('data/y_train.pkl', 'rb') as f:
+            y_train = pickle.load(f)
+        with open('data/y_test.pkl', 'rb') as f:
+            y_test = pickle.load(f)
+        return X_train, X_test, y_train, y_test
+    
     data = pd.read_csv('data/games.csv')
 
     data['grouped_opening'] = data['opening_eco'].apply(map_eco_to_grouped_label)
