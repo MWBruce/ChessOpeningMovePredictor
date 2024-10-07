@@ -26,6 +26,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from tqdm import tqdm
 
+## Defining Openning Moves Based on eco codes
 grouped_eco_labels = {
     'A00': 'Polish (Sokolsky) opening',
     'A01': 'Nimzovich-Larsen attack',
@@ -95,31 +96,41 @@ grouped_eco_labels = {
     'E60-E99': "King's Indian defence"
 }
 
+## Generating 4d data representation of board states
 def generate_4d_board_states(moves):
     board = chess.Board()
     piece_type_map = {'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5,
                       'p': 6, 'n': 7, 'b': 8, 'r': 9, 'q': 10, 'k': 11}
+    
+    ## List for board states
     board_states = []
     
     move_list = moves.split()
+
+    ## Using only first 28 moves
     move_list = move_list[:28] 
 
     for move in move_list:
+        ## Make move
         board.push_san(move)
+
+        ## Initialise empty board
         board_state = np.zeros((8, 8, 12))
         for square in chess.SQUARES:
             piece = board.piece_at(square)
             if piece:
                 rank, file = chess.square_rank(square), chess.square_file(square)
                 piece_type = piece_type_map[str(piece)]
+                ## Mark piece on board 
                 board_state[rank, file, piece_type] = 1
         board_states.append(board_state)
 
     return board_states
 
+## Function mapping eco code to grouped openning move name
 def map_eco_to_grouped_label(eco_code):
     for key, value in grouped_eco_labels.items():
-        if '-' in key:
+        if '-' in key: ## Handling eco code ranges
             start, end = key.split('-')
             if start <= eco_code <= end:
                 return value
@@ -127,20 +138,27 @@ def map_eco_to_grouped_label(eco_code):
             return value
     return 'Other'
 
+## Function balancing dataset, under stamples over represented classes and oversamples underrepresented
 def balance_dataset_and_split(data, target_column, N_samples, max_count, test_size):
     balanced_data = []
-    class_counts = data[target_column].value_counts().to_dict()
+    class_counts = data[target_column].value_counts().to_dict() ## Count occurences of classes
     
+    ## Iteration over dataset
     for index, row in data.iterrows():
         class_label = row[target_column]
         
+        ## Check if reach data N_samples capacity
         if len(balanced_data) < N_samples:
             balanced_data.append(row)
             class_counts[class_label] -= 1
         else:
+            ## Check sizes of each class
             balanced_class_counts = pd.Series([d[target_column] for d in balanced_data]).value_counts()
+
+            ## Find the largest class to undersample
             max_class = balanced_class_counts.idxmax()
 
+            ## Under sample from most represented
             if balanced_class_counts[max_class] > class_counts[class_label]:
                 balanced_data = [d for d in balanced_data if d[target_column] != max_class or balanced_class_counts[max_class] <= class_counts[class_label]]
                 balanced_data.append(row)
@@ -149,13 +167,16 @@ def balance_dataset_and_split(data, target_column, N_samples, max_count, test_si
 
     X_train, X_test = train_test_split(balanced_df, test_size=test_size, random_state=42)
 
+    ## Ensuring no duplicates currently
     X_train = X_train.drop_duplicates(subset=['moves'])
     X_test = X_test.drop_duplicates(subset=['moves'])
 
+    ## Upsample function to ensure underrepresented classes still are appropriately represented
     def upsample_to_balance(data, target_column, max_count):
         groups = data.groupby(target_column)
         upsampled_data = []
         for name, group in groups:
+            ## If less than required count we will upsample
             if len(group) < max_count:
                 tiled_group = pd.concat([group] * (max_count // len(group)))
                 remainder_group = group.sample(max_count - len(tiled_group), replace=True)
@@ -168,6 +189,7 @@ def balance_dataset_and_split(data, target_column, N_samples, max_count, test_si
     
     return X_train, X_test
 
+## Simply just saves the data
 def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
     # Create directory if it doesn't exist
     if not os.path.exists(prefix):
@@ -186,7 +208,7 @@ def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
     print(f'Data saved successfully at ./{prefix}!')
     return
 
-
+## Loads the data for use in model
 def load_dataset():   
     if os.path.exists('data/X_train.pkl'):
         with open('data/X_train.pkl', 'rb') as f:
@@ -201,22 +223,27 @@ def load_dataset():
     
     data = pd.read_csv('data/games.csv')
 
+    ## Checking data and size
     data['grouped_opening'] = data['opening_eco'].apply(map_eco_to_grouped_label)
     data = data[data['turns'] >= 28]
 
+    ## Checking for valid grouped opennings
     grouped_opening_counts = data['grouped_opening'].value_counts()
     valid_openings = grouped_opening_counts[grouped_opening_counts >= 10].index
     filtered_data = data[data['grouped_opening'].isin(valid_openings)]
     data = filtered_data
 
+    ## Setting data parameters
     N_samples = 10000
     max_count = 25
     test_size = 0.2
 
+    ## balancing dataset
     X_train, X_test = balance_dataset_and_split(data, 'grouped_opening', N_samples, max_count, test_size)
 
     all_labels = pd.concat([X_train['grouped_opening'], X_test['grouped_opening']])
 
+    ## Encoding labels
     label_encoder = LabelEncoder()
     label_encoder.fit(all_labels)
 
@@ -240,4 +267,5 @@ def load_dataset():
 
     split_and_save_data(X_train_4d, X_test_4d, y_train_encoded, y_test_encoded, prefix='data')
 
+    ## Returning data
     return X_train_4d, X_test_4d, y_train_encoded, y_test_encoded
