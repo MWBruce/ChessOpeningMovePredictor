@@ -96,7 +96,9 @@ grouped_eco_labels = {
     'E60-E99': "King's Indian defence"
 }
 
-## Generating 4d data representation of board states
+## Function: 4d data representation of board states
+## Input: moves (string) - string of moves in standard chess notation
+## Output: board_states (list) - list of 4d board states representing [seq_len, X_coord, Y_coord, Piece_Type]
 def generate_4d_board_states(moves):
     board = chess.Board()
     piece_type_map = {'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5,
@@ -127,7 +129,9 @@ def generate_4d_board_states(moves):
 
     return board_states
 
-## Function mapping eco code to grouped openning move name
+## Function: Mapping eco code to grouped openning move name
+# Input: eco_code (string) - game eco code
+# Output: (string) - Grouped name of openning move
 def map_eco_to_grouped_label(eco_code):
     for key, value in grouped_eco_labels.items():
         if '-' in key: ## Handling eco code ranges
@@ -139,6 +143,13 @@ def map_eco_to_grouped_label(eco_code):
     return 'Other'
 
 ## Function balancing dataset, under stamples over represented classes and oversamples underrepresented
+# Input: data (DataFrame) - dataset to balance
+#        target_column (string) - column name to balance by usually grouped openning
+#        N_samples (int) - maximum number of samples in dataset
+#        max_count (int) - maximum count for oversampling if less than this amount then it will be upsampled to this amount
+#        test_size (float) - proportion for test set
+# Output: X_train (DataFrame) - balanced datasets for training
+#         X_test (DataFrame) - balanced datasets for testing
 def balance_dataset_and_split(data, target_column, N_samples, max_count, test_size):
     balanced_data = []
     class_counts = data[target_column].value_counts().to_dict() ## Count occurences of classes
@@ -189,7 +200,12 @@ def balance_dataset_and_split(data, target_column, N_samples, max_count, test_si
     
     return X_train, X_test
 
-## Simply just saves the data
+## Function: Simply just saves the data
+# Input: X_train (array) - original train data
+#        X_test (array)  - original test data
+#        y_train (array) - original train label
+#        y_test (array)  - original testdata
+#        prefix (string) - Save file prefix
 def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
     # Create directory if it doesn't exist
     if not os.path.exists(prefix):
@@ -209,6 +225,12 @@ def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
     return
 
 ## Loads the data for use in model
+
+## Function: Load or generate the dataset, balance it, and save it to disk
+# Output: X_train_4d (array) - training data 
+#         X_test_4d (array) - test data 
+#         y_train_encoded (array) - encoded labels for training
+#         y_test_encoded (array) - encoded labels for test
 def load_dataset():   
     if os.path.exists('data/X_train.pkl'):
         with open('data/X_train.pkl', 'rb') as f:
