@@ -253,11 +253,7 @@ def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
     print(f"Data saved successfully at ./{prefix}!")
     return
 
-
-## Loads the data for use in model
-
-
-## Function: Load or generate the dataset, balance it, and save it to disk
+## Function: Loads the data for use in model
 # Output: X_train_4d (array) - training data
 #         X_test_4d (array) - test data
 #         y_train_encoded (array) - encoded labels for training
