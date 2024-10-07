@@ -145,6 +145,7 @@ def create_combined_cnn_lstm_with_attention(input_shape, num_classes, maxlen):
     model.add(Reshape((maxlen, -1)))
 
     # LSTM with Bidirectional wrapper
+    model.add(SpatialDropout1D(0.3))
     model.add(Bidirectional(LSTM(50, return_sequences=True)))
 
     # Attention Layer
