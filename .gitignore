@@ -3,3 +3,5 @@
 .vscode
 *.csv
 *.pkl
+*.keras
+*.pyc

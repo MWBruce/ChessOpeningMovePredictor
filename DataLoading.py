@@ -1,30 +1,30 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import random
-from collections import Counter
-from sklearn.ensemble import RandomForestClassifier
-import networkx as nx
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from sklearn.metrics import accuracy_score, silhouette_score
-from sklearn.metrics import accuracy_score, f1_score
-from sklearn.pipeline import Pipeline
-from sklearn.neural_network import MLPClassifier
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-import umap.umap_ as umap
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from imblearn.over_sampling import SMOTE
 import chess
 import chess.pgn
-from tqdm import tqdm
-from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import os
+import pandas as pd
 import pickle
-from imblearn.over_sampling import SMOTE
+import random
+import seaborn as sns
+import umap.umap_ as umap
 
-data = pd.read_csv('data/games.csv')
+from collections import Counter
+from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.manifold import TSNE
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, silhouette_score
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from tqdm import tqdm
 
 grouped_eco_labels = {
     'A00': 'Polish (Sokolsky) opening',
@@ -117,7 +117,6 @@ def generate_4d_board_states(moves):
 
     return board_states
 
-
 def map_eco_to_grouped_label(eco_code):
     for key, value in grouped_eco_labels.items():
         if '-' in key:
@@ -127,14 +126,6 @@ def map_eco_to_grouped_label(eco_code):
         elif eco_code == key:
             return value
     return 'Other'
-
-data['grouped_opening'] = data['opening_eco'].apply(map_eco_to_grouped_label)
-data = data[data['turns'] >= 28]
-
-grouped_opening_counts = data['grouped_opening'].value_counts()
-valid_openings = grouped_opening_counts[grouped_opening_counts >= 10].index
-filtered_data = data[data['grouped_opening'].isin(valid_openings)]
-data = filtered_data
 
 def balance_dataset_and_split(data, target_column, N_samples, max_count, test_size):
     balanced_data = []
@@ -177,43 +168,65 @@ def balance_dataset_and_split(data, target_column, N_samples, max_count, test_si
     
     return X_train, X_test
 
-N_samples = 10000
-max_count = 25
-test_size = 0.2
-
-X_train, X_test = balance_dataset_and_split(data, 'grouped_opening', N_samples, max_count, test_size)
-
-all_labels = pd.concat([X_train['grouped_opening'], X_test['grouped_opening']])
-
-label_encoder = LabelEncoder()
-label_encoder.fit(all_labels)
-
-y_train_encoded = label_encoder.transform(X_train['grouped_opening'])
-y_test_encoded = label_encoder.transform(X_test['grouped_opening'])
-
-tqdm.pandas()
-X_train['board_states_4d'] = X_train['moves'].progress_apply(generate_4d_board_states)
-X_train_4d = np.array(X_train['board_states_4d'].to_list())
-
-X_test['board_states_4d'] = X_test['moves'].progress_apply(generate_4d_board_states)
-X_test_4d = np.array(X_test['board_states_4d'].to_list())
-
-plt.figure(figsize=(12, 6))
-X_train['grouped_opening'].value_counts().plot(kind='bar')
-plt.title('Class Distribution in Training Set After Upsampling')
-plt.xlabel('Grouped Opening')
-plt.ylabel('Number of Samples')
-plt.xticks(rotation=90)
-plt.show()
-
 def split_and_save_data(X_train, X_test, y_train, y_test, prefix):
-    with open(f'{prefix}_X_train.pkl', 'wb') as f:
+    # Create directory if it doesn't exist
+    if not os.path.exists(prefix):
+        os.makedirs(prefix)
+
+    # Save the data
+    with open(f'{prefix}/X_train.pkl', 'wb') as f:
         pickle.dump(X_train.astype('float32'), f)
-    with open(f'{prefix}_X_test.pkl', 'wb') as f:
+    with open(f'{prefix}/X_test.pkl', 'wb') as f:
         pickle.dump(X_test.astype('float32'), f)
-    with open(f'{prefix}_y_train.pkl', 'wb') as f:
+    with open(f'{prefix}/y_train.pkl', 'wb') as f:
         pickle.dump(y_train.astype('float32'), f)
-    with open(f'{prefix}_y_test.pkl', 'wb') as f:
+    with open(f'{prefix}/y_test.pkl', 'wb') as f:
         pickle.dump(y_test.astype('float32'), f)
 
-split_and_save_data(X_train_4d, X_test_4d, y_train_encoded, y_test_encoded, prefix='chess')
+    print(f'Data saved successfully at ./{prefix}!')
+    return
+
+
+def load_dataset():   
+    data = pd.read_csv('data/games.csv')
+
+    data['grouped_opening'] = data['opening_eco'].apply(map_eco_to_grouped_label)
+    data = data[data['turns'] >= 28]
+
+    grouped_opening_counts = data['grouped_opening'].value_counts()
+    valid_openings = grouped_opening_counts[grouped_opening_counts >= 10].index
+    filtered_data = data[data['grouped_opening'].isin(valid_openings)]
+    data = filtered_data
+
+    N_samples = 10000
+    max_count = 25
+    test_size = 0.2
+
+    X_train, X_test = balance_dataset_and_split(data, 'grouped_opening', N_samples, max_count, test_size)
+
+    all_labels = pd.concat([X_train['grouped_opening'], X_test['grouped_opening']])
+
+    label_encoder = LabelEncoder()
+    label_encoder.fit(all_labels)
+
+    y_train_encoded = label_encoder.transform(X_train['grouped_opening'])
+    y_test_encoded = label_encoder.transform(X_test['grouped_opening'])
+
+    tqdm.pandas()
+    X_train['board_states_4d'] = X_train['moves'].progress_apply(generate_4d_board_states)
+    X_train_4d = np.array(X_train['board_states_4d'].to_list())
+
+    X_test['board_states_4d'] = X_test['moves'].progress_apply(generate_4d_board_states)
+    X_test_4d = np.array(X_test['board_states_4d'].to_list())
+
+    plt.figure(figsize=(12, 6))
+    X_train['grouped_opening'].value_counts().plot(kind='bar')
+    plt.title('Class Distribution in Training Set After Upsampling')
+    plt.xlabel('Grouped Opening')
+    plt.ylabel('Number of Samples')
+    plt.xticks(rotation=90)
+    plt.show()
+
+    split_and_save_data(X_train_4d, X_test_4d, y_train_encoded, y_test_encoded, prefix='data')
+
+    return X_train_4d, X_test_4d, y_train_encoded, y_test_encoded
