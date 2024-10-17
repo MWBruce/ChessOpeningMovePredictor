@@ -1,7 +1,6 @@
 .venv
 .env
 .vscode
-*.csv
 *.pkl
 *.keras
 *.pyc
