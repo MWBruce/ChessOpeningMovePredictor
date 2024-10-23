@@ -13,8 +13,7 @@ This repository contains the code and resources for the Chess Opening Move Predi
     - `scripts/DataLoading.py`: Script for preprocessing the dataset.
     - `scripts/Train.py`: Script defining the machine learning models, training and evaluation.
     - `scripts/Attention.py`: Script contianing Keras class for custom attention layer.
-
-- **archive/**: Contains the experiments for the project.
+    - `archive/*`: Contains the experiments for the project.
     
 - **requirements.txt**: List of dependencies required to run the project.
 
